@@ -1,0 +1,17 @@
+Legend / Key for ERD
+
+Entities – represented by rectangles; each entity corresponds to a database table.
+
+Attributes – listed inside entities; PK (Primary Key) is underlined, FK (Foreign Key) is marked.
+
+Relationships – shown as connecting lines between entities.
+
+1 – denotes "one" (single record).
+
+M – denotes "many" (multiple records).
+
+1..M – one-to-many relationship.
+
+1..1 – one-to-one relationship.
+
+M..N – many-to-many relationship.
