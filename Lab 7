@@ -1,0 +1,75 @@
+SELECT f.*
+FROM flights f
+JOIN airline a ON f.airline_id = a.airline_id
+WHERE a.airline_id = 1;
+
+
+SELECT 
+    f.flight_id,
+    f.flight_no,
+    a.airport_name AS departure_airport
+FROM flights f
+JOIN airport a ON f.departure_airport_id = a.airport_id;
+
+
+SELECT a.*
+FROM airline a
+LEFT JOIN flights f 
+    ON a.airline_id = f.airline_id
+    AND f.scheduled_departure >= date_trunc('month', CURRENT_DATE) + INTERVAL '1 month'
+    AND f.scheduled_departure <  date_trunc('month', CURRENT_DATE) + INTERVAL '2 month'
+WHERE f.flight_id IS NULL;
+
+
+SELECT p.*
+FROM passengers p
+JOIN booking b ON p.passenger_id = b.passenger_id
+JOIN booking_flight bf ON b.booking_id = bf.booking_id
+WHERE bf.flight_id = 1;
+
+
+SELECT 
+    bf.flight_id,
+    AVG(b.price) AS avg_price,
+    SUM(b.price) AS total_revenue,
+    MAX(b.price) AS max_price,
+    MIN(b.price) AS min_price
+FROM booking b
+JOIN booking_flight bf ON b.booking_id = bf.booking_id
+GROUP BY bf.flight_id;
+
+
+SELECT 
+    f.flight_id,
+    f.flight_no,
+    a.airport_name AS arrival_airport,
+    a.country AS arrival_country,
+    al.airline_name
+FROM flights f
+JOIN airport a ON f.arrival_airport_id = a.airport_id
+JOIN airline al ON f.airline_id = al.airline_id
+WHERE a.country = 'China';
+
+
+SELECT 
+    p.passenger_id,
+    p.first_name,
+    p.last_name,
+    a.city AS arrival_city
+FROM passengers p
+JOIN booking b ON p.passenger_id = b.passenger_id
+JOIN booking_flight bf ON b.booking_id = bf.booking_id
+JOIN flights f ON bf.flight_id = f.flight_id
+JOIN airport a ON f.arrival_airport_id = a.airport_id
+WHERE AGE(CURRENT_DATE, p.date_of_birth) < INTERVAL '18 years';
+
+
+SELECT 
+    a.country AS airport_country,
+    f.flight_id,
+    al.airline_name
+FROM flights f
+JOIN airport a ON f.departure_airport_id = a.airport_id
+JOIN airline al ON f.airline_id = al.airline_id
+WHERE a.country = al.airline_country
+GROUP BY a.country, f.flight_id, al.airline_name;
