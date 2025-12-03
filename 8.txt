@@ -1,0 +1,84 @@
+-- 1
+CREATE OR REPLACE VIEW v_flights_by_date AS
+SELECT *
+FROM flights
+WHERE scheduled_departure = CURRENT_DATE;
+
+-- 2
+CREATE OR REPLACE VIEW v_bookings_next_week AS
+SELECT b.*, bf.flight_id, f.scheduled_departure
+FROM booking b
+JOIN booking_flight bf ON b.booking_id = bf.booking_id
+JOIN flights f ON f.flight_id = bf.flight_id
+WHERE f.scheduled_departure BETWEEN CURRENT_DATE AND CURRENT_DATE + 7;
+
+-- 3
+CREATE OR REPLACE VIEW v_top5_routes AS
+SELECT f.origin_airport_id, f.destination_airport_id, COUNT(bf.booking_id) AS total_bookings
+FROM flights f
+JOIN booking_flight bf ON f.flight_id = bf.flight_id
+GROUP BY f.origin_airport_id, f.destination_airport_id
+ORDER BY total_bookings DESC
+LIMIT 5;
+
+-- 4
+CREATE OR REPLACE VIEW v_airline_flights AS
+SELECT *
+FROM flights
+WHERE airline_id = 1;
+
+-- 5
+CREATE OR REPLACE VIEW v_airline_flights_7days AS
+SELECT *
+FROM flights
+WHERE airline_id = 1
+  AND scheduled_departure BETWEEN CURRENT_DATE AND CURRENT_DATE + 7;
+
+-- 6
+CREATE OR REPLACE VIEW v_delayed_24h AS
+SELECT *
+FROM flights
+WHERE actual_arrival > scheduled_arrival + INTERVAL '24 hours';
+
+-- 7
+CREATE OR REPLACE VIEW v_passengers_leffler AS
+SELECT p.first_name || ' ' || p.last_name AS full_name,
+       a.country
+FROM passengers p
+JOIN booking b ON b.passenger_id = p.passenger_id
+JOIN booking_flight bf ON bf.booking_id = b.booking_id
+JOIN flights f ON f.flight_id = bf.flight_id
+JOIN airports a ON a.airport_id = f.origin_airport_id
+WHERE b.booking_platform = 'Leffler-Thompson';
+
+SELECT * FROM v_passengers_leffler;
+
+-- 8
+CREATE OR REPLACE VIEW v_top10_countries AS
+SELECT a.country, COUNT(*) AS visits
+FROM flights f
+JOIN airports a ON a.airport_id = f.destination_airport_id
+GROUP BY a.country
+ORDER BY visits DESC
+LIMIT 10;
+
+-- 9
+CREATE OR REPLACE VIEW v_airline_flights AS
+SELECT f.*, al.airline_name
+FROM flights f
+JOIN airlines al ON al.airline_id = f.airline_id
+WHERE f.airline_id = 1;
+
+SELECT * FROM v_airline_flights;
+
+-- 10
+DROP VIEW IF EXISTS
+v_flights_by_date,
+v_bookings_next_week,
+v_top5_routes,
+v_airline_flights,
+v_airline_flights_7days,
+v_delayed_24h,
+v_passengers_leffler,
+v_top10_countries
+CASCADE;

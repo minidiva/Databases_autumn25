@@ -1,0 +1,126 @@
+-- 1
+CREATE PROCEDURE InsertFlight
+    @FlightNumber NVARCHAR(20),
+    @DepartureAirport NVARCHAR(10),
+    @ArrivalAirport NVARCHAR(10),
+    @DepartureTime DATETIME,
+    @ArrivalTime DATETIME,
+    @Status NVARCHAR(20)
+AS
+BEGIN
+    INSERT INTO Flights(FlightNumber, DepartureAirport, ArrivalAirport,
+                        DepartureTime, ArrivalTime, Status)
+    VALUES (@FlightNumber, @DepartureAirport, @ArrivalAirport,
+            @DepartureTime, @ArrivalTime, @Status);
+END;
+
+
+-- 2
+CREATE PROCEDURE UpdateFlightStatus
+    @FlightNumber NVARCHAR(20),
+    @Status NVARCHAR(20)
+AS
+BEGIN
+    UPDATE Flights
+    SET Status = @Status
+    WHERE FlightNumber = @FlightNumber;
+END;
+
+
+-- 3
+CREATE PROCEDURE GetFlightsFromAirport
+    @Airport NVARCHAR(10)
+AS
+BEGIN
+    SELECT *
+    FROM Flights
+    WHERE DepartureAirport = @Airport;
+END;
+
+
+-- 4 
+CREATE FUNCTION AvgArrivalDelay(@Airport NVARCHAR(10))
+RETURNS FLOAT
+AS
+BEGIN
+    DECLARE @Result FLOAT;
+
+    SELECT @Result = AVG(DelayMinutes)
+    FROM Flights
+    WHERE ArrivalAirport = @Airport;
+
+    RETURN @Result;
+END;
+
+-- 5
+CREATE PROCEDURE GetPassengersByFlight
+    @FlightNumber NVARCHAR(20)
+AS
+BEGIN
+    SELECT P.*
+    FROM Passengers P
+    JOIN Tickets T ON T.PassengerID = P.ID
+    WHERE T.FlightNumber = @FlightNumber;
+END;
+
+-- 6
+CREATE PROCEDURE GetTopPassenger
+AS
+BEGIN
+    SELECT TOP 1
+        P.ID,
+        P.Name,
+        COUNT(T.FlightNumber) AS FlightsTaken
+    FROM Passengers P
+    JOIN Tickets T ON P.ID = T.PassengerID
+    GROUP BY P.ID, P.Name
+    ORDER BY FlightsTaken DESC;
+END;
+
+-- 7
+CREATE PROCEDURE GetSeverelyDelayedFlights
+AS
+BEGIN
+    SELECT *
+    FROM Flights
+    WHERE DelayMinutes > 24 * 60;
+END;
+
+-- 8
+CREATE FUNCTION CountFlightsByAirline(@Airline NVARCHAR(50))
+RETURNS INT
+AS
+BEGIN
+    DECLARE @Total INT;
+
+    SELECT @Total = COUNT(*)
+    FROM Flights
+    WHERE Airline = @Airline;
+
+    RETURN @Total;
+END;
+
+-- 9
+CREATE PROCEDURE AvgTicketPrice
+    @FlightNumber NVARCHAR(20)
+AS
+BEGIN
+    SELECT AVG(Price) AS AvgPrice
+    FROM Tickets
+    WHERE FlightNumber = @FlightNumber;
+END;
+
+-- 10
+CREATE PROCEDURE GetMostExpensiveFlight
+AS
+BEGIN
+    SELECT TOP 1
+        F.FlightNumber,
+        F.DepartureAirport,
+        F.ArrivalAirport,
+        T.Price
+    FROM Tickets T
+    JOIN Flights F ON F.FlightNumber = T.FlightNumber
+    ORDER BY T.Price DESC;
+END;
+

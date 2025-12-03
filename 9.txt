@@ -1,0 +1,240 @@
+
+-- 1
+DO $$
+DECLARE
+  v_booking integer := 123;
+  v_simulate_error boolean := true;
+BEGIN
+  BEGIN
+    DELETE FROM baggage_check WHERE booking_id = v_booking;
+    DELETE FROM baggage WHERE booking_id = v_booking;
+    DELETE FROM boarding_pass WHERE booking_id = v_booking;
+    DELETE FROM booking_flight WHERE booking_id = v_booking;
+    DELETE FROM booking WHERE booking_id = v_booking;
+
+    IF v_simulate_error THEN
+      RAISE EXCEPTION 'Simulated error: test rollback for booking %', v_booking;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Rollback triggered for booking %: %', v_booking, SQLERRM;
+    RETURN;
+  END;
+END;
+$$;
+
+SELECT * FROM booking WHERE booking_id = 123;
+
+-- 2
+DO $$
+DECLARE
+  v_flight integer := 10;
+  v_new_departure date := '2025-12-20';
+  v_simulate_error boolean := true;
+BEGIN
+  BEGIN
+    UPDATE flights
+    SET scheduled_departure = v_new_departure,
+        update_at = CURRENT_DATE
+    WHERE flight_id = v_flight;
+
+    IF v_simulate_error THEN
+      RAISE EXCEPTION 'Simulated error: rollback reschedule %', v_flight;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Rollback triggered for flight %: %', v_flight, SQLERRM;
+    RETURN;
+  END;
+END;
+$$;
+
+SELECT flight_id, scheduled_departure, update_at FROM flights WHERE flight_id = 10;
+
+-- 3
+DO $$
+DECLARE
+  v_flight integer := 10;
+  v_decrease numeric := 500.00;
+  v_simulate_error boolean := true;
+BEGIN
+  BEGIN
+    UPDATE booking b
+    SET price = price - v_decrease,
+        update_at = CURRENT_DATE
+    FROM booking_flight bf
+    WHERE bf.booking_id = b.booking_id
+      AND bf.flight_id = v_flight;
+
+    IF v_simulate_error THEN
+      RAISE EXCEPTION 'Simulated error: rollback price update for flight %', v_flight;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Rollback triggered for price update on flight %: %', v_flight, SQLERRM;
+    RETURN;
+  END;
+END;
+$$;
+
+SELECT b.booking_id, b.price FROM booking b JOIN booking_flight bf ON b.booking_id = bf.booking_id WHERE bf.flight_id = 10;
+
+-- 4
+DO $$
+DECLARE
+  v_passenger integer := 5;                
+  v_new_first text := 'Alan';
+  v_new_last  text := 'Tokin';
+  v_simulate_error boolean := true;
+BEGIN
+  BEGIN
+    UPDATE passengers
+    SET first_name = v_new_first,
+        last_name  = v_new_last,
+        update_at  = CURRENT_DATE
+    WHERE passenger_id = v_passenger;
+
+    IF v_simulate_error THEN
+      RAISE EXCEPTION 'Simulated error: rollback passenger update %', v_passenger;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Rollback triggered for passenger %: %', v_passenger, SQLERRM;
+    RETURN;
+  END;
+END;
+$$;
+
+SELECT passenger_id, first_name, last_name, update_at FROM passengers WHERE passenger_id = 5;
+SELECT b.booking_id, b.passenger_id FROM booking b WHERE b.passenger_id = 5;
+
+-- 5
+DO $$
+DECLARE
+  v_new_passenger_id integer := 9999;       
+  v_flight integer := 10;                   
+  v_booking_id integer := 8888;
+  v_simulate_error boolean := true;
+BEGIN
+  BEGIN
+    INSERT INTO passengers(passenger_id, first_name, last_name, date_of_birth, created_at, update_at)
+    VALUES (v_new_passenger_id, 'Sam', 'New', '1998-01-01', CURRENT_DATE, CURRENT_DATE);
+
+    INSERT INTO booking(booking_id, passenger_id, booking_platform, created_at, update_at, status, price)
+    VALUES (v_booking_id, v_new_passenger_id, 'Web', CURRENT_DATE, CURRENT_DATE, 'Confirmed', 15000);
+
+    INSERT INTO booking_flight(booking_flight_id, booking_id, flight_id, created_at, update_at)
+    VALUES (v_booking_id + 100000, v_booking_id, v_flight, CURRENT_DATE, CURRENT_DATE);
+
+    IF v_simulate_error THEN
+      RAISE EXCEPTION 'Simulated error: rollback new passenger+booking %', v_booking_id;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Rollback triggered for new passenger/booking %: %', v_booking_id, SQLERRM;
+    RETURN;
+  END;
+END;
+$$;
+
+SELECT * FROM passengers WHERE passenger_id = 9999;
+SELECT * FROM booking WHERE booking_id = 8888;
+SELECT * FROM booking_flight WHERE booking_id = 8888;
+
+-- 6
+DO $$
+DECLARE
+  v_flight integer := 10;
+  v_increase numeric := 200.00;
+  v_simulate_error boolean := false;
+BEGIN
+  BEGIN
+    UPDATE booking b
+    SET price = price + v_increase,
+        update_at = CURRENT_DATE
+    FROM booking_flight bf
+    WHERE bf.booking_id = b.booking_id
+      AND bf.flight_id = v_flight;
+
+    IF v_simulate_error THEN
+      RAISE EXCEPTION 'Simulated error: rollback increase for flight %', v_flight;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Rollback triggered for increase on flight %: %', v_flight, SQLERRM;
+    RETURN;
+  END;
+END;
+$$;
+
+SELECT b.booking_id, b.price FROM booking b JOIN booking_flight bf ON b.booking_id = bf.booking_id WHERE bf.flight_id = 10;
+
+-- 7
+DO $$
+DECLARE
+  v_baggage integer := 55;
+  v_new_weight numeric := 28.50;
+  v_simulate_error boolean := true;
+BEGIN
+  BEGIN
+    UPDATE baggage
+    SET weight_in_kg = v_new_weight,
+        update_date = CURRENT_DATE
+    WHERE baggage_id = v_baggage;
+
+    IF v_simulate_error THEN
+      RAISE EXCEPTION 'Simulated error: rollback baggage update %', v_baggage;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Rollback triggered for baggage %: %', v_baggage, SQLERRM;
+    RETURN;
+  END;
+END;
+$$;
+
+SELECT baggage_id, weight_in_kg, update_date FROM baggage WHERE baggage_id = 55;
+
+-- 8
+DO $$
+DECLARE
+  v_passenger integer := 5;
+  v_discount_pct numeric := 0.10;
+  v_simulate_error boolean := true;
+BEGIN
+  BEGIN
+    UPDATE booking
+    SET price = price * (1 - v_discount_pct),
+        update_at = CURRENT_DATE
+    WHERE passenger_id = v_passenger;
+
+    IF v_simulate_error THEN
+      RAISE EXCEPTION 'Simulated error: rollback discount for passenger %', v_passenger;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Rollback triggered for discount passenger %: %', v_passenger, SQLERRM;
+    RETURN;
+  END;
+END;
+$$;
+-- Проверка:
+SELECT booking_id, passenger_id, price FROM booking WHERE passenger_id = 5;
+
+-- 9
+DO $$
+DECLARE
+  v_old_flight integer := 10;
+  v_new_flight integer := 20;
+  v_simulate_error boolean := true;
+BEGIN
+  BEGIN
+
+    UPDATE booking_flight
+    SET flight_id = v_new_flight,
+        update_at = CURRENT_DATE
+    WHERE flight_id = v_old_flight;
+
+    IF v_simulate_error THEN
+      RAISE EXCEPTION 'Simulated error: rollback reschedule bookings from % to %', v_old_flight, v_new_flight;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Rollback triggered for reschedule from % to %: %', v_old_flight, v_new_flight, SQLERRM;
+    RETURN;
+  END;
+END;
+$$;
+
+SELECT * FROM booking_flight WHERE flight_id IN (10,20) ORDER BY booking_id;
